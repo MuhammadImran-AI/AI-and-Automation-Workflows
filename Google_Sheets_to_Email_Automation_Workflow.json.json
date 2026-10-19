@@ -1,0 +1,286 @@
+{
+  "name": "final chautech email system",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        -256
+      ],
+      "id": "c16f03f3-6c7e-4445-8f2a-d80dcc38cf73",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "toRecipients": "={{ $('Get rows').item.json['Email'] }}",
+        "subject": "=Frage zu Ihren Geschäftsprozessen und Arbeitsabläufen",
+        "bodyContent": "=Guten Tag {{ $('Get rows').item.json['First Name'] }},<br><br>\n\n{{ $('Message a model').item.json.content?.parts?.[0]?.text || $('Message a model').item.json.text || $('Message a model').item.json.message?.content }}<br><br>\n\nHätten Sie nächste Woche 10 Minuten Zeit für ein kurzes Telefonat, um zu besprechen, wie wir Sie unterstützen können?<br><br>\n\nMit freundlichen Grüßen,<br>\n\n\n",
+        "additionalFields": {
+          "bodyContentType": "html"
+        }
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        -256
+      ],
+      "id": "617eec13-13c8-4784-9b52-15d38919b4a3",
+      "name": "Send a message",
+      "webhookId": "7a119839-a14f-4941-bab7-33aa07eb57e6",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "Y0JFzjoc3nf2xtRK",
+          "name": "ChauTech Outlook Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "getRows",
+        "workbook": {
+          "__rl": true,
+          "value": "01Y4S2FABBCOZTMGNB4ZAYQ46V246YS3XM",
+          "mode": "list",
+          "cachedResultName": "sample",
+          "cachedResultUrl": "https://chautech-my.sharepoint.com/personal/imran_aslam_chautech_de/_layouts/15/Doc.aspx?sourcedoc=%7B36B31321-A119-41E6-8873-D5D73D896EEC%7D&file=sample.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1"
+        },
+        "worksheet": {
+          "__rl": true,
+          "value": "{00000000-0001-0000-0000-000000000000}",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://chautech-my.sharepoint.com/personal/imran_aslam_chautech_de/_layouts/15/Doc.aspx?sourcedoc=%7B36B31321-A119-41E6-8873-D5D73D896EEC%7D&file=sample.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1&activeCell=Leads!A1"
+        },
+        "table": {
+          "__rl": true,
+          "value": "{63A3B58F-33FF-43DB-A949-BECAFB4559EA}",
+          "mode": "list",
+          "cachedResultName": "Table3",
+          "cachedResultUrl": "https://chautech-my.sharepoint.com/personal/imran_aslam_chautech_de/_layouts/15/Doc.aspx?sourcedoc=%7B36B31321-A119-41E6-8873-D5D73D896EEC%7D&file=sample.xlsx&action=default&mobileredirect=true&DefaultItemOpen=1&activeCell=Leads!A1:D3"
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.microsoftExcel",
+      "typeVersion": 2.2,
+      "position": [
+        -1040,
+        -528
+      ],
+      "id": "2d3c1db9-bdc6-4fd1-a562-155f1963a0a9",
+      "name": "Get rows",
+      "credentials": {
+        "microsoftExcelOAuth2Api": {
+          "id": "vpNATxPBFDPao1ep",
+          "name": "Microsoft Excel account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.Website }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -896,
+        -304
+      ],
+      "id": "efe95932-58c9-4fea-bf2b-aee0e18481ae",
+      "name": "HTTP Request",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.1-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.1-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Write ONLY a short, highly professional email body paragraph in German, using the formal \"Sie\" form (2-3 sentences max).. Do NOT include subject lines, greetings, or sign-offs.\n\nTarget Website: {{ $('Get rows').item.json['Website'] }}\nTarget Name: {{ $('Get rows').item.json['First Name'] }}\n\nFocus: Explain how ChauTech Consulting GmbH can help automate their manual work, streamline operations, and save time for their business based on their website context. Keep it natural, direct, and focused on solving operational problems."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -432,
+        -224
+      ],
+      "id": "17a1c92f-8958-4594-8027-2f6983a48c1d",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "hRRXJbLsi3zCvyD4",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "eMAIL SYSTEM & SHEET IN MICROSOFT\n\n",
+        "height": 80,
+        "width": 256
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -656,
+        -688
+      ],
+      "typeVersion": 1,
+      "id": "740da0d5-db7d-4bbb-9319-48aab444c847",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -704,
+        -272
+      ],
+      "id": "0f7efd05-f87b-478f-a4fe-e448bc32183e",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        112,
+        -256
+      ],
+      "id": "8ab53ed1-0091-4d89-9e0c-ba8d199f4e3c",
+      "name": "Wait",
+      "webhookId": "2cb706d4-e7d4-4f37-a98b-ebc39093326f"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get rows": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "09f3edb0-6063-4dca-a9b9-8a3ce91d16c0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c5815a6008a04112d75bd090c2539e658aeee01dfd202e45e7a7f28d368d0278"
+  },
+  "nodeGroups": [],
+  "id": "OPb5WYYcLBt8Rbcb",
+  "tags": []
+}
