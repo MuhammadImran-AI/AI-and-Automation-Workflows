@@ -1,0 +1,186 @@
+{
+  "name": "Whatsapp Workflow personal",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "options": {
+          "systemMessage": "You are Sir Imran's personal assistant on WhatsApp. You are a MAN. You chat like a real, polite, friendly person, not like a bot.\n\nNAME RULE (very important):\n- Always call him \"Sir Imran\". Never say \"Imran bhai\", \"Imran sahab\" or just \"Imran\".\n\nGENDER RULE (very important):\n- You are male. In Urdu and Roman Urdu always use male grammar: \"kar raha hoon\", \"bata deta hoon\", \"baat kar raha hoon\", \"samajh gaya\".\n- Never use female forms like \"kar rahi hoon\", \"bata deti hoon\".\n\nMOST IMPORTANT RULE:\nIf you have NOT yet introduced yourself in this conversation history, your reply MUST start by politely saying you are Sir Imran's assistant, that Sir Imran is busy right now, and asking if they want to leave a message for him. Then, in the same reply, respond to what they wrote.\nExample: \"Walaikum Assalam! Main Sir Imran ka assistant baat kar raha hoon, Sir Imran abhi thora busy hain 🙂 Aap ko koi message dena ho to bata dein, main unhein inform kar deta hoon. Aur sunayein, aap kaise hain?\"\nAfter that, never introduce yourself again.\n\nSTYLE RULES:\n- Keep every reply SHORT: 1 to 3 lines maximum, like a normal WhatsApp message.\n- Casual, warm and natural. No long paragraphs, no formal letters, no bullet points.\n- Use an emoji only sometimes, not in every message.\n- Always reply in the same language and script the person uses (Urdu script, Roman Urdu, English, German, etc.).\n\nAFTER THE FIRST MESSAGE:\n- If the person wants to keep chatting, chat naturally and politely about anything: general questions, information, advice, small talk.\n- If they leave a message for Sir Imran, confirm it in one line, e.g. \"Theek hai, main Sir Imran ko bata deta hoon.\"\n\nLIMITS:\n- Never make promises, prices, meetings or commitments on Sir Imran's behalf. Only say you will pass the message on.\n- Never share Sir Imran's personal information (address, location, schedule, other contacts).\n- If someone sincerely asks whether they are talking to a real person or an AI, honestly say you are Sir Imran's AI assistant."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -128,
+        -128
+      ],
+      "id": "61c53666-6f6f-40cd-9401-616614ee620d",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').item.json.body.data.key.remoteJid }}-{{ $now.format('yyyy-MM-dd') }}",
+        "contextWindowLength": 11
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -128,
+        96
+      ],
+      "id": "80e2ef4f-f316-4f19-9c77-26da4027ffe7",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "5d7c1367-a900-4855-85d0-0369a198d251",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -720,
+        -224
+      ],
+      "id": "61dddea3-e3b7-4bf5-8dc2-0d011ed159bc",
+      "name": "Webhook",
+      "webhookId": "5d7c1367-a900-4855-85d0-0369a198d251"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.19.0.2:8080/message/sendText/ChauTech",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "chau-tech-key"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('Webhook').item.json.body.data.key.remoteJidAlt || $('Webhook').item.json.body.data.key.remoteJid }}\",\n  \"text\": {{ JSON.stringify($json.output) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        -256
+      ],
+      "id": "a06cde87-33da-451a-b232-6819db146a21",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const store = $getWorkflowStaticData('global');\nstore.paused = store.paused || {};\nconst PAUSE_HOURS = 2;\nconst now = Date.now();\n\nfunction pause(...chats) {\n  for (const c of chats) if (c) store.paused[c] = now + PAUSE_HOURS * 3600 * 1000;\n}\nfunction isPaused(...chats) {\n  return chats.some(c => c && store.paused[c] && store.paused[c] > now);\n}\n\nconst body = $input.first().json.body;\nconst event = body.event;\nconst list = Array.isArray(body.data) ? body.data : [body.data];\n\n// 1) Sir Imran READ (seen) a message\nif (event === 'messages.update') {\n  for (const u of list) {\n    if (!u) continue;\n    const fromMe = u.fromMe ?? (u.key && u.key.fromMe);\n    const chat = u.remoteJid ?? (u.key && u.key.remoteJid);\n    if (fromMe === false && String(u.status).toUpperCase() === 'READ') pause(chat);\n  }\n  return [];\n}\n\n// 2) A new message\nif (event === 'messages.upsert') {\n  const d = list[0];\n  const chat = d.key.remoteJid;\n  const chatAlt = d.key.remoteJidAlt;\n\n  // skip groups and status updates\n  if (chat === 'status@broadcast' || chat.endsWith('@g.us')) return [];\n\n  // Sir Imran wrote himself -> bot goes quiet\n  if (d.key.fromMe) { pause(chat, chatAlt); return []; }\n\n  // Sir Imran is handling this chat -> bot stays quiet\n  if (isPaused(chat, chatAlt)) return [];\n\n  const m = d.message || {};\n  const text = m.conversation || (m.extendedTextMessage && m.extendedTextMessage.text) || '';\n  if (!text) return [];\n\n  return [{ json: { ...$input.first().json, text } }];\n}\n\nreturn [];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        -224
+      ],
+      "id": "51512d17-a789-493e-8294-ff9561edd8fd",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        80
+      ],
+      "id": "1d55b138-e2f2-4a7d-ae20-67db40a29339",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "YJFJrUqitRCwxpgd",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "81d0a22d-3244-4326-ae63-2c9b57b6c422",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c5815a6008a04112d75bd090c2539e658aeee01dfd202e45e7a7f28d368d0278"
+  },
+  "nodeGroups": [],
+  "id": "J2boRt6m7vy8F9og",
+  "tags": []
+}
