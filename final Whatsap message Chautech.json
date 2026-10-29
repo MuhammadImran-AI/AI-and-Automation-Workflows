@@ -1,0 +1,169 @@
+{
+  "name": "final Whatsap message Chautech",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -496,
+        192
+      ],
+      "id": "23546a44-fd13-4d0d-bb0d-b36673eccadc",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        32,
+        64
+      ],
+      "id": "4d6f7bad-be8f-4545-9e31-a15e40948c4f",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8080/message/sendText/ChauTech",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={\"apikey\": \"chau-tech-key\", \"Content-Type\": \"application/json\"}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.Phone }}\",\n  \"text\": \"Hi {{ $json.Name }},\\n\\nHope you are doing well!\\n\\nWe are reaching out from ChauTech Consulting. We help businesses automate repetitive workflows and optimize digital operations.\\n\\nWould you be open to a quick 10-minute chat next week to discuss how we can support your goals?\\n\\nBest regards,\\nChauTech Consulting Team\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        400,
+        128
+      ],
+      "id": "985bb3f7-0881-4b29-a8b0-2fb3315279dd",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13YJ_qIdqRvswuq0e4rbpjTAKeSIAo5l0JtkeX7EjQ5E",
+          "mode": "list",
+          "cachedResultName": "ChauTech Clients",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13YJ_qIdqRvswuq0e4rbpjTAKeSIAo5l0JtkeX7EjQ5E/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 261755885,
+          "mode": "list",
+          "cachedResultName": "Untitled",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13YJ_qIdqRvswuq0e4rbpjTAKeSIAo5l0JtkeX7EjQ5E/edit#gid=261755885"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -224,
+        -16
+      ],
+      "id": "4a7ef278-73c3-402b-a95f-d89ccf3e2c55",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "DYyXHTCAMGewrsny",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 45
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        352
+      ],
+      "id": "da5b208a-90a9-4b19-ae47-b2955a9f27db",
+      "name": "Wait",
+      "webhookId": "d6a2733d-169f-4557-83b4-ee068956d7d9"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "80a0f0f6-387b-4d28-8c52-a3cc737846c8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "c5815a6008a04112d75bd090c2539e658aeee01dfd202e45e7a7f28d368d0278"
+  },
+  "nodeGroups": [],
+  "id": "9YY3WfQaDevHLlUd",
+  "tags": []
+}

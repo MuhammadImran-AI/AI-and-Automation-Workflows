@@ -1,0 +1,322 @@
+{
+  "name": "code final Whatsap message Chautech",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        200
+      ],
+      "id": "64fffb72-6c96-49e1-9d6e-7ace0b7c33dc",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13YJ_qIdqRvswuq0e4rbpjTAKeSIAo5l0JtkeX7EjQ5E",
+          "mode": "list",
+          "cachedResultName": "ChauTech Clients",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13YJ_qIdqRvswuq0e4rbpjTAKeSIAo5l0JtkeX7EjQ5E/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 261755885,
+          "mode": "list",
+          "cachedResultName": "Untitled",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13YJ_qIdqRvswuq0e4rbpjTAKeSIAo5l0JtkeX7EjQ5E/edit#gid=261755885"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -560,
+        200
+      ],
+      "id": "f6a33421-8fe2-44d9-94c2-ce32fc73413b",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "DYyXHTCAMGewrsny",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== SETTINGS: change only here =====\nconst COUNTRY_CODE = '49';                 // Germany\nconst MAX_PER_RUN  = 20;                   // safety: max messages per run\nconst SKIP_STATUS  = ['sent', 'stop', 'unsubscribe'];  // rows with these Status values are skipped\nconst TEMPLATE =\n  'Hi {name},\\n\\n' +\n  'Hope you are doing well!\\n\\n' +\n  'We are reaching out from ChauTech Consulting. We help businesses automate repetitive workflows and optimize digital operations.\\n\\n' +\n  'Would you be open to a quick 10-minute chat next week to discuss how we can support your goals?\\n\\n' +\n  'Best regards,\\n' +\n  'ChauTech Consulting Team';\n// ======================================\n\nconst seen = new Set();\nconst out = [];\n\nfor (const item of $input.all()) {\n  const row = item.json;\n\n  // 1. skip rows that were already handled\n  const status = String(row.Status || '').trim().toLowerCase();\n  if (SKIP_STATUS.includes(status)) continue;\n\n  // 2. clean the phone number: digits only\n  let p = String(row.Phone || '').replace(/\\D/g, '');\n  if (p.startsWith('00')) p = p.slice(2);\n  if (p.startsWith('0'))  p = COUNTRY_CODE + p.slice(1);\n\n  // 3. skip wrong-length and duplicate numbers\n  if (p.length < 11 || p.length > 15) continue;\n  if (seen.has(p)) continue;\n  seen.add(p);\n\n  // 4. build the personal message\n  const name = String(row.Name || '').trim() || 'there';\n  out.push({ json: {\n    row_number: row.row_number,\n    Name: name,\n    Phone: p,\n    text: TEMPLATE.replace('{name}', name)\n  }});\n\n  // 5. stop at the safety limit\n  if (out.length >= MAX_PER_RUN) break;\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        200
+      ],
+      "id": "b58d2fd0-8d77-4063-9f3d-4bdac2fac208",
+      "name": "Prepare messages"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -80,
+        200
+      ],
+      "id": "47fac270-11da-4212-a003-8aaf5c44a1d7",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8080/message/sendText/ChauTech",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={\"apikey\": \"chau-tech-key\", \"Content-Type\": \"application/json\"}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $json.Phone, text: $json.text }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        200,
+        340
+      ],
+      "id": "b3a9aaaa-bbdd-41dc-ba63-d99a383c5f6c",
+      "name": "HTTP Request",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Look at the answer of WhatsApp and decide: Sent or Failed\nconst reply = $input.item.json;\nconst source = $('Loop Over Items').item.json;\nconst ok = !reply.error && (reply.key || reply.status);\n\nreturn { json: {\n  row_number: source.row_number,\n  Status: ok ? 'Sent' : 'Failed'\n} };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        340
+      ],
+      "id": "0e33d7d7-0233-47fd-a31c-1139d5fce5bc",
+      "name": "Check result"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "13YJ_qIdqRvswuq0e4rbpjTAKeSIAo5l0JtkeX7EjQ5E",
+          "mode": "list",
+          "cachedResultName": "ChauTech Clients",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13YJ_qIdqRvswuq0e4rbpjTAKeSIAo5l0JtkeX7EjQ5E/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 261755885,
+          "mode": "list",
+          "cachedResultName": "Untitled",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13YJ_qIdqRvswuq0e4rbpjTAKeSIAo5l0JtkeX7EjQ5E/edit#gid=261755885"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "Status": "={{ $json.Status }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        680,
+        340
+      ],
+      "id": "3c56aac5-f8e9-4cb4-80ae-42bc1caaaa4a",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "DYyXHTCAMGewrsny",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * 31) + 30 }}",
+        "unit": "seconds"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        920,
+        340
+      ],
+      "id": "362b946a-972f-4d30-8aee-ed2c85dcc37c",
+      "name": "Wait",
+      "webhookId": "a0d2d135-8b3d-4b7d-a499-b71ab319f068"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Prepare messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare messages": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Check result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check result": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
